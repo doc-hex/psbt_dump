@@ -1,6 +1,9 @@
 # PSBT Dump
 
-Quick program to dump the contents of a PSBT: Partially Signed Bitcoin Transaction (see BIP 174)
+Quick program to dump the contents of a PSBT: Partially Signed Bitcoin Transaction (see BIP 174).
+
+Accepts binary or hex-encoded PSBT files, and displays each byte. Parses what it can
+understand along the way.
 
 ## Usage
 
@@ -27,77 +30,93 @@ golden reference or anything like that.
 # Example Output
 
 ```
-% psbt_dump data/worked-sign2.psbt
-902 bytes in PSBT: data/worked-sign2.psbt
+% psbt_dump data/worked-7.psbt
+
+976 bytes in PSBT: data/worked-7.psbt
 -- HEADER --
 
 psbt 0xff
 
 -- GLOBALS --
 
-  key: 00  (1 bytes, 'Transaction')
+  key: 00  (GLOBAL_UNSIGNED_TX)
 value:
 
-02000000022e8c7d8d37c427e060ec002ec1c2bc30196fc2f75d6a8844cbc03651c081430a0100000000ffffffff96a04e0cc636f377933e3d93accc627faacdbcdb5a9624df1b490bd045f24d2c0000000000ffffffff01e02be50e0000000017a914b53bb0dc1db8c8d803e3e39f784d42e4737ffa0d8700000000  (124 bytes)
+020000000258e87a21b56daf0c23be8e7070456c336f7cbaa5c8757924f545887bb2abdd750000000000ffffffff838d0427d0ec650a68aa46bb0b098aea4422c071b2ca78352a077959d07cea1d0100000000ffffffff0270aaf00800000000160014d85c2b71d0060b09c9886aeb815e50991dda124d00e1f5050000000016001400aea9a2e5f0f876a588df5546e8742d1d87008f00000000  (154 bytes)
 
- Transaction: (2 inputs, 1 outputs, 0 witness, 49f50a39d9b9e12f6c6d3e6bf175ab514543da4c684fbdcfdda5078fd6e08ee0)
-   [in #0] (not signed)
-   [in #1] (not signed)
-  [out #0] 3JDHjf9tXTm6tCSZeVPeS6QLH6SZyAAAEN
+ Transaction: (2 inputs, 2 outputs, 0 witness)
+            : txid 82efd652d7ab1197f01a5f4d9a30cb4c68bb79ab6fec58dfa1bf112291d1617b
+   [in #0 ] (not signed)
+            from 75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858 : 0
+   [in #1 ] (not signed)
+            from 1dea7cd05979072a3578cab271c02244ea8a090bbb46aa680a65ecd027048d83 : 1
+  [out #0 ] tb1qmpwzkuwsqc9snjvgdt4czhjsnywa5yjdzglap9
+  [out #1 ] tb1qqzh2ngh97ru8dfvgma25d6r595wcwqy06sqc03
 
 
+-- INPUT #0 --
 
-  key: 01 203736c3c06053896d7041ce8f5bae3df76cc491 (21 bytes, 'Redeem Script')
+  key: 00  (IN_NON_WITNESS_UTXO)
 value:
 
-522103c8727ce35f1c93eb0be21406ee9a923c89219fe9c9e8504c8314a6a22d1295c02103c74dc710c407d7db6e041ee212d985cd2826d93f806ed44912b9a1da691c977352ae  (71 bytes)
+0200000001aad73931018bd25f84ae400b68848be09db706eac2ac18298babee71ab656f8b0000000048473044022058f6fc7c6a33e1b31548d481c826c015bd30135aad42cd67790dab66d2ad243b02204a1ced2604c6735b6393e5b41691dd78b00f0c5942fb9f751856faa938157dba01feffffff0280f0fa020000000017a9140fb9463421696b82c833af241c78c17ddbde493487d0f20a270100000017a91429ca74f8a08f81999428185c97b5d852e4063f618765000000  (187 bytes)
+
+ Transaction: (1 inputs, 2 outputs, 0 witness)
+            : txid 75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858
+   [in #0 ] (unknown)
+  [out #0 ] 2MtgN5EvHUm2kNVvqKgqsZ9v2fGH3jCpXVF
+  [out #1 ] 2Mw4CE6tUQ7Ak9Zf9TKujgzbVjDZqgRbUVP
 
 
-  key: 01 f3ba8a120d960ae07d1dbe6f0c37fb4c926d76d5 (21 bytes, 'Redeem Script')
+
+  key: 07  (IN_FINAL_SCRIPTSIG)
 value:
 
-0020a8f44467bf171d51499153e01c0bd6291109fc38bd21b3c3224c9dc6b57590df  (34 bytes)
+00473044022074018ad4180097b873323c0015720b3684cc8123891048e7dbcd9b55ad679c99022073d369b740e3eb53dcefa33823c8070514ca55a7dd9544f157c167913261118c01483045022100f61038b308dc1da865a34852746f015772934208c6d24454393cd99bdf2217770220056e675a675a6d0a02b85b14e5e29074d8a25a9b5760bea2816f661910a006ea01475221029583bf39ae0a609747ad199addd634fa6108559d6c5cd39b4c2183f1ab96e07f2102dab61ff49a14db6a7d02b0cd1fbb78fc4b18312b5b4e54dae4dba2fbfef536d752ae  (218 bytes)
 
+-- INPUT #1 --
 
-  key: 02 a8f44467bf171d51499153e01c0bd6291109fc38bd21b3c3224c9dc6b57590df (33 bytes, 'Witness Script')
+  key: 01  (IN_WITNESS_UTXO)
 value:
 
-522102e80dec31d167865c1685e9d7a9291e66a4ea22c65cfee324289a1667ccda3b87210258cbbc3cb295a8bebac233aadc7773978804993798be5390ab444f6dd4c5327e52ae  (71 bytes)
+00c2eb0b0000000017a914b7f5faf40e3d40a5a459b1db3535f2b72fa921e887  (32 bytes)
 
--- SEP -- (below probably for input #0)
 
-  key: 00  (1 bytes, 'UTXO')
+  key: 07  (IN_FINAL_SCRIPTSIG)
 value:
 
-02000000018b2dd2f735d0a9338af96402a8a91e4841cd3fed882362e7329fb04f1ff65325000000006a473044022077bedfea9910c9ba4e00dec941dace974f8b47349992c5d4312c1cf5796cce5502206164e6bfff7ac11590064ca571583709337c8a38973db2e70f4e9d93b3bcce1d0121032d64447459784e37cb2dda366c697adbbdc8aae2ad6db74ed2dade39d75882fafeffffff0382b42a04000000001976a914da533648fd339d5797790e6bb1667d9e86fdfb6888ac80f0fa020000000017a914203736c3c06053896d7041ce8f5bae3df76cc4918700b4c4040000000017a914b53bb0dc1db8c8d803e3e39f784d42e4737ffa0d879e2f1300  (255 bytes)
-
- Transaction: (1 inputs, 3 outputs, 0 witness, 0a4381c05136c0cb44886a5df7c26f1930bcc2c12e00ec60e027c4378d7d8c2e)
-   [in #0] 1QL9LAAE6F1JErwLEtL8DgRiYGH75dtje7
-  [out #0] 1LuPzVdqmtg7uneoEQZbpvqfgEuchEH6FR
-  [out #1] 34dMh1iAGdxepiYzUqx6MDCyWLLzeFyZFA
-  [out #2] 3JDHjf9tXTm6tCSZeVPeS6QLH6SZyAAAEN
+2200208c2353173743b595dfb4a07b72ba8e42e3797da74e87fe7d9d7497e3b2028903  (35 bytes)
 
 
-
-  key: 02 03c8727ce35f1c93eb0be21406ee9a923c89219fe9c9e8504c8314a6a22d1295c0 (34 bytes, 'Parial Sig')
+  key: 08  (IN_FINAL_SCRIPTWITNESS)
 value:
 
-304402204a33aa884465a7d909000c366afb90c9256b66575f0c7e5f12446a16d8cc1a4d02203fa9fc43d50168f000b280be6b3db916cf9e483de8e6d9eac948b0d08f7601df01  (71 bytes)
+0400473044022062eb7a556107a7c73f45ac4ab5a1dddf6f7075fb1275969a7f383efff784bcb202200c05dbb7470dbf2f08557dd356c7325c1ed30913e996cd3840945db12228da5f01473044022065f45ba5998b59a27ffe1a7bed016af1f1f90d54b3aa8f7450aa5f56a25103bd02207f724703ad1edb96680b284b56d4ffcb88f7fb759eabbe08aa30f29b851383d20147522103089dc10c7ac6db54f91329af617333db388cead0c231f723379d1b99030b02dc21023add904f3d6dcf59ddb906b0dee23529b7ffb9ed50e5e86151926860221f0e7352ae  (218 bytes)
 
--- SEP -- (below probably for input #1)
+-- OUTPUT #0 --
 
-  key: 01  (1 bytes, 'Witness UTXO')
+  key: 02 03a9a4c37f5996d3aa25dbac6b570af0650394492942460b354753ed9eeca58771 (OUT_BIP32_DERIVATION, 34 bytes)
 value:
 
-00c2eb0b0000000017a914f3ba8a120d960ae07d1dbe6f0c37fb4c926d76d587  (32 bytes)
+d90c6a4f000000800000008004000080  (16 bytes)
+
+    Address: 03a9a4c37f5996d3aa25dbac6b570af0650394492942460b354753ed9eeca58771 (33 bytes)
+             = n1ExfZ1rECtYdzfBHoeYtAWzTURXsdSVkb
+    HD Path: (m=0x4f6a0cd9)/0'/0'/4'
 
 
-  key: 02 0258cbbc3cb295a8bebac233aadc7773978804993798be5390ab444f6dd4c5327e (34 bytes, 'Parial Sig')
+-- OUTPUT #1 --
+
+  key: 02 027f6399757d2eff55a136ad02c684b1838b6556e5f1b6b34282a94b6b50051096 (OUT_BIP32_DERIVATION, 34 bytes)
 value:
 
-3045022100cdac5ee547b60f79feec111d0e082c3350b30a087c130d5e734e0199b3f8c14702205deddd38d8f7ddb19931059f46b2de0c8548fe79f8c8aea34c5e653ea0136b9501  (72 bytes)
+d90c6a4f000000800000008005000080  (16 bytes)
 
--- SEP -- (below probably for input #2)
+    Address: 027f6399757d2eff55a136ad02c684b1838b6556e5f1b6b34282a94b6b50051096 (33 bytes)
+             = mfaZXpvjGrisYP1rW2wL2YBHJt22sCoX53
+    HD Path: (m=0x4f6a0cd9)/0'/0'/5'
 
--- EOF --
+
+-- EXPECT EOF --
+-- ACTUAL EOF --
 ```
