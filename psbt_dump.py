@@ -12,7 +12,7 @@ from pprint import pformat
 from binascii import b2a_hex as _b2a_hex
 from binascii import a2b_hex as _a2b_hex
 from collections import namedtuple
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from pycoin.tx.Tx import Tx
 from pycoin.tx.TxOut import TxOut
 from pycoin.encoding import b2a_hashed_base58, hash160
@@ -51,17 +51,24 @@ def deser_compact_size(f, nit=None):
 @click.command()
 @click.argument('psbt', type=click.File('rb'))
 @click.option('--hex-output', '-h', help="Just show hex string of binary", is_flag=True)
+@click.option('--base64', '-6', help="Output base64 encoded PSBT", is_flag=True)
 @click.option('--testnet', '-t', help="Assume testnet3 addresses", is_flag=True, default=True)
-def dump(psbt, hex_output, testnet):
+def dump(psbt, hex_output, testnet, base64):
 
     raw = psbt.read()
     if raw[0:10] == b'70736274ff':
         raw = _a2b_hex(raw.strip())
+    if raw[0:6] == b'cHNidP':
+        raw = b64decode(raw)
 
     #assert raw[0:5] == b'psbt\xff'
 
     if hex_output:
         print(b2a_hex(raw))
+        sys.exit(0)
+
+    if base64:
+        print(str(b64encode(raw), 'ascii'))
         sys.exit(0)
     
     print("%d bytes in PSBT: %s" % (len(raw), psbt.name))
