@@ -17,6 +17,7 @@ from pycoin.tx.Tx import Tx
 from pycoin.tx.TxOut import TxOut
 from pycoin.encoding import b2a_hashed_base58, hash160
 from pycoin.serialize import b2h_rev
+from pycoin.contrib.segwit_addr import encode as bech32_encode
 
 # BIP-174 aka PSBT defined values
 PSBT_GLOBAL_UNSIGNED_TX 	= (0)
@@ -85,6 +86,7 @@ def dump(psbt, hex_output, testnet, base64):
         num_outs = None
         section = 'globals'
         section_idx = 0
+        expect_outs = set()
 
         while 1:
             first = fd.read(1)
@@ -156,11 +158,20 @@ def dump(psbt, hex_output, testnet, base64):
             except IndexError:
                 purpose = 'Unknown type=0x%0x' % key[0]
 
-            print('\n  key: %02x %s (%s%s)' % (
-                        key[0], b2a_hex(key[1:]) if len(key) > 1 else '',
-                        purpose,
-                        (', %d bytes' % ks if ks != 1 else '')))
-            print('value:\n\n%s  (%d bytes)\n' % (b2a_hex(val), vs))
+            print('\n  key: %02x ' % key[0], end='')
+            if len(key) <= 1:
+                print("%s" % purpose)
+            else:
+                print('%s\n       (%d bytes)' % (b2a_hex(key[1:]), ks))
+
+            print('value: ', end='')
+
+            if len(val) == 4:
+                nn, = struct.unpack("<I", val)
+                print("'%s' = 0x%x = %d\n" % (b2a_hex(val), nn, nn))
+                continue
+
+            print('%s  (%d bytes)\n' % (b2a_hex(val), vs))
 
             # prefix byte for addresses in current network
             ADP = b'\x6f' if testnet else b'\0'
@@ -181,7 +192,9 @@ def dump(psbt, hex_output, testnet, base64):
                         if section == 'globals':
                             print("            from %s : %d" % (b2h_rev(i.previous_hash), i.previous_index))
                     for n,o in enumerate(t.txs_out):
-                        print("  [out #%-2d] %s" % (n, o.address('XTN' if testnet else 'BTC')))
+                        out_addr = o.address('XTN' if testnet else 'BTC')
+                        print("  [out #%-2d] %s" % (n, out_addr))
+                        expect_outs.add(out_addr)
                     print("\n")
 
                     if num_ins is None:
@@ -201,16 +214,26 @@ def dump(psbt, hex_output, testnet, base64):
                                 for i in range(4, len(val), 4)]
                     path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
 
+
+                    # conservative: render them all, pick one found if expected
+                    addrs = []
                     if len(pubkey) in {33, 65}:
                         # assume old skool b58 p2pkh, bitcoin mainnet, etc.
-                        addr = b2a_hashed_base58(ADP + hash160(pubkey))
-                    else:
-                        addr = '(bad length)'
+                        h20 = hash160(pubkey)
+                        for prefix in [0, 111, 5, 196]:
+                            addrs.append(b2a_hashed_base58(bytes([prefix]) + h20))
+                        for hrp in ['bc', 'tb']:
+                            addrs.append(bech32_encode(hrp, 0, h20))
 
-                    print("    Address: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
-                    print("             = %s" % addr)
+                    match = set(addrs).intersection(expect_outs)
+                    if match:
+                        addrs = list(match)
+
+                    print("     Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
                     print("    HD Path: (m=0x%08x)/%s" % (
                                     struct.unpack('<I',fingerprint)[0], '/'.join(path)))
+                    for addr in addrs:
+                        print("             = %s" % addr)
                     print("\n")
                 except:
                     print("(unable to parse hdpath)")
