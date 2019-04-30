@@ -7,7 +7,7 @@
 from setuptools import setup
 
 setup(
-    name='psb_dump',
+    name='psbt_dump',
     version='1.0',
     py_modules=[],
     python_requires='>3.5.2',
