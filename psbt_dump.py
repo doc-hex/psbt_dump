@@ -21,6 +21,7 @@ from pycoin.contrib.segwit_addr import encode as bech32_encode
 
 # BIP-174 aka PSBT defined values
 PSBT_GLOBAL_UNSIGNED_TX 	= (0)
+PSBT_GLOBAL_XPUB        	= (1)
 
 PSBT_IN_NON_WITNESS_UTXO 	= (0)
 PSBT_IN_WITNESS_UTXO 	    = (1)
@@ -37,6 +38,7 @@ PSBT_OUT_WITNESS_SCRIPT 	= (1)
 PSBT_OUT_BIP32_DERIVATION 	= (2)
 
 b2a_hex = lambda a: str(_b2a_hex(a), 'ascii')
+b2a_HEX = lambda a: b2a_hex(a).upper()
 
 def deser_compact_size(f, nit=None):
     nit = nit if nit is not None else struct.unpack("<B", f.read(1))[0]
@@ -53,7 +55,7 @@ def deser_compact_size(f, nit=None):
 @click.argument('psbt', type=click.File('rb'))
 @click.option('--hex-output', '-h', help="Just show hex string of binary", is_flag=True)
 @click.option('--base64', '-6', help="Output base64 encoded PSBT", is_flag=True)
-@click.option('--testnet', '-t', help="Assume testnet3 addresses", is_flag=True, default=True)
+@click.option('--testnet', '-t', help="Assume testnet3 addresses", is_flag=True, default=False)
 def dump(psbt, hex_output, testnet, base64):
 
     raw = psbt.read()
@@ -139,7 +141,8 @@ def dump(psbt, hex_output, testnet, base64):
 
             try:
                 if section == 'globals':
-                    purpose = ['GLOBAL_UNSIGNED_TX'][key[0]]
+                    purpose = [ 'GLOBAL_UNSIGNED_TX',
+                                'GLOBAL_XPUB'][key[0]]
                 elif section == 'inputs':
                     purpose = [ 'IN_NON_WITNESS_UTXO',
                                 'IN_WITNESS_UTXO',
@@ -204,6 +207,17 @@ def dump(psbt, hex_output, testnet, base64):
                     print("(unable to parse txn)")
                     raise
 
+            if (section, key[0]) == ('globals', PSBT_GLOBAL_XPUB):
+                # key is: master key fingerprint catenated with the derivation path of public key
+                # value is: binary BIP32 serialization (not base58)
+
+                path = [struct.unpack_from('<I', key, offset=i)[0] 
+                            for i in range(5, len(val), 4)]
+                path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
+                fingerprint = key[1:5]
+                print("    HD Path: (m=%s)/%s" % (b2a_HEX(fingerprint), '/'.join(path)))
+                print("       XPUB: %s" % b2a_hashed_base58(val))
+
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_BIP32_DERIVATION)]:
                 # HD key paths
@@ -223,15 +237,14 @@ def dump(psbt, hex_output, testnet, base64):
                         for prefix in [0, 111, 5, 196]:
                             addrs.append(b2a_hashed_base58(bytes([prefix]) + h20))
                         for hrp in ['bc', 'tb']:
-                            addrs.append(bech32_encode(hrp, 0, h20))
+                            addrs.append(bech32_encode(hrp, 0, h20))        # really?
 
                     match = set(addrs).intersection(expect_outs)
                     if match:
                         addrs = list(match)
 
                     print("     Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
-                    print("    HD Path: (m=0x%08x)/%s" % (
-                                    struct.unpack('<I',fingerprint)[0], '/'.join(path)))
+                    print("    HD Path: (m=%s)/%s" % (b2a_HEX(fingerprint), '/'.join(path)))
                     for addr in addrs:
                         print("             = %s" % addr)
                     print("\n")
