@@ -38,7 +38,7 @@ PSBT_OUT_WITNESS_SCRIPT 	= (1)
 PSBT_OUT_BIP32_DERIVATION 	= (2)
 
 b2a_hex = lambda a: str(_b2a_hex(a), 'ascii')
-b2a_HEX = lambda a: b2a_hex(a).upper()
+xfp2hex = lambda a: b2a_hex(a[::-1]).upper()
 
 def deser_compact_size(f, nit=None):
     nit = nit if nit is not None else struct.unpack("<B", f.read(1))[0]
@@ -215,7 +215,7 @@ def dump(psbt, hex_output, testnet, base64):
                             for i in range(5, len(val), 4)]
                 path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
                 fingerprint = key[1:5]
-                print("    HD Path: (m=%s)/%s" % (b2a_HEX(fingerprint), '/'.join(path)))
+                print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
                 print("       XPUB: %s" % b2a_hashed_base58(val))
 
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
@@ -244,7 +244,7 @@ def dump(psbt, hex_output, testnet, base64):
                         addrs = list(match)
 
                     print("     Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
-                    print("    HD Path: (m=%s)/%s" % (b2a_HEX(fingerprint), '/'.join(path)))
+                    print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
                     for addr in addrs:
                         print("             = %s" % addr)
                     print("\n")
