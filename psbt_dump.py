@@ -163,9 +163,9 @@ def dump(psbt, hex_output, testnet, base64):
 
             print('\n  key: %02x ' % key[0], end='')
             if len(key) <= 1:
-                print("%s" % purpose)
+                print("(%s)" % purpose)
             else:
-                print('%s\n       (%d bytes)' % (b2a_hex(key[1:]), ks))
+                print('%s\n       (%s + %d bytes)' % (b2a_hex(key[1:]), purpose, ks-1))
 
             print('value: ', end='')
 
