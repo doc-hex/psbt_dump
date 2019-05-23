@@ -56,7 +56,8 @@ def deser_compact_size(f, nit=None):
 @click.option('--hex-output', '-h', help="Just show hex string of binary", is_flag=True)
 @click.option('--base64', '-6', help="Output base64 encoded PSBT", is_flag=True)
 @click.option('--testnet', '-t', help="Assume testnet3 addresses", is_flag=True, default=False)
-def dump(psbt, hex_output, testnet, base64):
+@click.option('--show-addrs', '-a', help="Attempt decode of addresses", is_flag=True, default=False)
+def dump(psbt, hex_output, testnet, base64, show_addrs):
 
     raw = psbt.read()
     if raw[0:10] == b'70736274ff':
@@ -209,13 +210,18 @@ def dump(psbt, hex_output, testnet, base64):
 
             if (section, key[0]) == ('globals', PSBT_GLOBAL_XPUB):
                 # key is: master key fingerprint catenated with the derivation path of public key
+                #           - prefixed by 4-byte nonce when needed to make unique
                 # value is: binary BIP32 serialization (not base58)
 
+                nonce, fingerprint = key[1:5], key[5:5+4]
                 path = [struct.unpack_from('<I', key, offset=i)[0] 
-                            for i in range(5, len(val), 4)]
+                            for i in range(1+4+4, len(key), 4)]
                 path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
-                fingerprint = key[1:5]
-                print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
+
+                # hide details of the nonce if zero
+                n_info = '' if nonce == bytes(4) else ' (nonce: %s)' % b2a_hex(nonce)
+                
+                print("    HD Path: (m=%s)/%s%s" % (xfp2hex(fingerprint), '/'.join(path), n_info))
                 print("       XPUB: %s" % b2a_hashed_base58(val))
 
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
@@ -228,20 +234,21 @@ def dump(psbt, hex_output, testnet, base64):
                                 for i in range(4, len(val), 4)]
                     path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
 
-
                     # conservative: render them all, pick one found if expected
+                    # - but not helpful for multisig, need to look around to know if thats the case
                     addrs = []
-                    if len(pubkey) in {33, 65}:
-                        # assume old skool b58 p2pkh, bitcoin mainnet, etc.
-                        h20 = hash160(pubkey)
-                        for prefix in [0, 111, 5, 196]:
-                            addrs.append(b2a_hashed_base58(bytes([prefix]) + h20))
-                        for hrp in ['bc', 'tb']:
-                            addrs.append(bech32_encode(hrp, 0, h20))        # really?
+                    if show_addrs:
+                        if len(pubkey) in {33, 65}:
+                            # assume old skool b58 p2pkh, bitcoin mainnet, etc.
+                            h20 = hash160(pubkey)
+                            for prefix in [0, 111]:
+                                addrs.append(b2a_hashed_base58(bytes([prefix]) + h20))
+                            for hrp in ['bc', 'tb']:
+                                addrs.append(bech32_encode(hrp, 0, h20))        # really?
 
-                    match = set(addrs).intersection(expect_outs)
-                    if match:
-                        addrs = list(match)
+                        match = set(addrs).intersection(expect_outs)
+                        if match:
+                            addrs = list(match)
 
                     print("     Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
                     print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
@@ -250,6 +257,25 @@ def dump(psbt, hex_output, testnet, base64):
                     print("\n")
                 except:
                     print("(unable to parse hdpath)")
+
+            if (section, key[0]) in [('inputs', PSBT_IN_REDEEM_SCRIPT),
+                                     ('outputs', PSBT_OUT_REDEEM_SCRIPT)]:
+
+                try:
+                    if val[-1] == 0xAE:
+                        M, N = (val[0]-80, val[-2]-80)
+                        print("     P2SH Multisig: %d of %d" % (M, N))
+                        print("     Pubkeys: ")
+                        for idx in range(N):
+                            pk = val[1 + (34 * idx):]
+                            assert pk[0] == 0x21
+                            print("        #%d: %s" % (idx+1, b2a_hex(pk[1:33])))
+                        print("\n")
+                        
+                        # XXX decode p2sh addresses here too?
+                except:
+                    raise
+                    print("(unable to parse multisig redeem script)")
 
 if __name__ == '__main__':
     dump()
