@@ -209,20 +209,15 @@ def dump(psbt, hex_output, testnet, base64, show_addrs):
                     raise
 
             if (section, key[0]) == ('globals', PSBT_GLOBAL_XPUB):
-                # key is: master key fingerprint catenated with the derivation path of public key
-                #           - prefixed by 4-byte nonce when needed to make unique
-                # value is: binary BIP32 serialization (not base58)
+                # key is: binary BIP32 serialization (not base58)
+                # value is: master key fingerprint catenated with the derivation path of public key
 
-                nonce, fingerprint = key[1:5], key[5:5+4]
-                path = [struct.unpack_from('<I', key, offset=i)[0] 
-                            for i in range(1+4+4, len(key), 4)]
+                fingerprint = val[0:4]
+                path = [struct.unpack_from('<I', val, offset=i)[0] for i in range(4, len(val), 4)]
                 path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
-
-                # hide details of the nonce if zero
-                n_info = '' if nonce == bytes(4) else ' (nonce: %s)' % b2a_hex(nonce)
                 
-                print("    HD Path: (m=%s)/%s%s" % (xfp2hex(fingerprint), '/'.join(path), n_info))
-                print("       XPUB: %s" % b2a_hashed_base58(val))
+                print("       XPUB: %s" % b2a_hashed_base58(key[1:]))
+                print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
 
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_BIP32_DERIVATION)]:
@@ -259,7 +254,9 @@ def dump(psbt, hex_output, testnet, base64, show_addrs):
                     print("(unable to parse hdpath)")
 
             if (section, key[0]) in [('inputs', PSBT_IN_REDEEM_SCRIPT),
-                                     ('outputs', PSBT_OUT_REDEEM_SCRIPT)]:
+                                     ('inputs', PSBT_IN_WITNESS_SCRIPT),
+                                     ('outputs', PSBT_OUT_REDEEM_SCRIPT),
+                                     ('outputs', PSBT_OUT_WITNESS_SCRIPT)]:
 
                 try:
                     if val[-1] == 0xAE:
