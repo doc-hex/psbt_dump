@@ -266,7 +266,7 @@ def dump(psbt, hex_output, testnet, base64, show_addrs):
                         for idx in range(N):
                             pk = val[1 + (34 * idx):]
                             assert pk[0] == 0x21
-                            print("        #%d: %s" % (idx+1, b2a_hex(pk[1:33])))
+                            print("        #%d: %s" % (idx+1, b2a_hex(pk[1:1+33])))
                         print("\n")
                         
                         # XXX decode p2sh addresses here too?
