@@ -54,10 +54,11 @@ def deser_compact_size(f, nit=None):
 @click.command()
 @click.argument('psbt', type=click.File('rb'))
 @click.option('--hex-output', '-h', help="Just show hex string of binary", is_flag=True)
+@click.option('--bin-output', '-b', type=click.File('wb'), help="Output binary PSBT")
 @click.option('--base64', '-6', help="Output base64 encoded PSBT", is_flag=True)
 @click.option('--testnet', '-t', help="Assume testnet3 addresses", is_flag=True, default=False)
 @click.option('--show-addrs', '-a', help="Attempt decode of addresses", is_flag=True, default=False)
-def dump(psbt, hex_output, testnet, base64, show_addrs):
+def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
 
     raw = psbt.read()
     if raw[0:10] == b'70736274ff':
@@ -77,6 +78,9 @@ def dump(psbt, hex_output, testnet, base64, show_addrs):
     
     print("%d bytes in PSBT: %s" % (len(raw), psbt.name))
 
+    if bin_output:
+        bin_output.write(raw)
+        sys.exit(0)
 
     with io.BytesIO(raw) as fd:
         hdr = fd.read(4)
@@ -217,7 +221,7 @@ def dump(psbt, hex_output, testnet, base64, show_addrs):
                 path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
                 
                 print("       XPUB: %s" % b2a_hashed_base58(key[1:]))
-                print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
+                print("    HD Path: (m=%s)/%s\n" % (xfp2hex(fingerprint), '/'.join(path)))
 
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_BIP32_DERIVATION)]:
