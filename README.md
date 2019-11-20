@@ -5,6 +5,9 @@ Quick program to dump the contents of a PSBT: Partially Signed Bitcoin Transacti
 Accepts binary or hex-encoded PSBT files, and displays each byte. Parses what it can
 understand along the way.
 
+**NOTE** Prior to Nov 20/2019, this program would display the XFP (extended fingerprint)
+of the derivation paths in the wrong endian.
+
 ## Usage
 
 ```
