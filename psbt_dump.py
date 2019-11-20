@@ -38,7 +38,9 @@ PSBT_OUT_WITNESS_SCRIPT 	= (1)
 PSBT_OUT_BIP32_DERIVATION 	= (2)
 
 b2a_hex = lambda a: str(_b2a_hex(a), 'ascii')
-xfp2hex = lambda a: b2a_hex(a[::-1]).upper()
+
+# no endian swap needed here, because we read as byte string from file
+xfp2hex = lambda a: b2a_hex(a).upper()
 
 def deser_compact_size(f, nit=None):
     nit = nit if nit is not None else struct.unpack("<B", f.read(1))[0]
