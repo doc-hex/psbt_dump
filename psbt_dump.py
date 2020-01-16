@@ -52,6 +52,41 @@ def deser_compact_size(f, nit=None):
         nit = struct.unpack("<Q", f.read(8))[0]
     return nit
 
+def render_address(script, testnet=True):
+    # take a scriptPubKey (part of the TxOut) and convert into conventional human-readable
+    # string... aka: the "payment address"
+    from pycoin.encoding import b2a_hashed_base58
+    from pycoin.contrib.segwit_addr import encode as bech32_encode
+
+    ll = len(script)
+
+    if not testnet:
+        bech32_hrp = 'bc'
+        b58_addr    = bytes([0])
+        b58_script  = bytes([5])
+    else:
+        bech32_hrp = 'tb'
+        b58_addr    = bytes([111])
+        b58_script  = bytes([196])
+
+    # P2PKH
+    if ll == 25 and script[0:3] == b'\x76\xA9\x14' and script[23:26] == b'\x88\xAC':
+        return b2a_hashed_base58(b58_addr + script[3:3+20])
+
+    # P2SH
+    if ll == 23 and script[0:2] == b'\xA9\x14' and script[22] == 0x87:
+        return b2a_hashed_base58(b58_script + script[2:2+20])
+
+    # P2WPKH
+    if ll == 22 and script[0:2] == b'\x00\x14':
+        return bech32_encode(bech32_hrp, 0, script[2:])
+
+    # P2WSH
+    if ll == 34 and script[0:2] == b'\x00\x20':
+        return bech32_encode(bech32_hrp, 0, script[2:])
+
+    return '[script: %s]' % b2a_hex(script)
+
 
 @click.command()
 @click.argument('psbt', type=click.File('rb'))
@@ -198,12 +233,12 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                                     sum(1 for i in t.txs_in if i.witness)))
                     print("            : txid %s" % t.hash())
                     for n,i in enumerate(t.txs_in):
-                        print("   [in #%-2d] %s" % (n, i.address(ADP) if i.script else '(not signed)'))
+                        print("   [in #%d] %s" % (n, i.address(ADP) if i.script else '(not signed)'))
                         if section == 'globals':
-                            print("            from %s : %d" % (b2h_rev(i.previous_hash), i.previous_index))
+                            print("    from %s : %d" % (b2h_rev(i.previous_hash), i.previous_index))
                     for n,o in enumerate(t.txs_out):
-                        out_addr = o.address('XTN' if testnet else 'BTC')
-                        print("  [out #%-2d] %s" % (n, out_addr))
+                        out_addr = render_address(o.script, testnet)
+                        print("  [out #%d] %.8f => %s" % (n, o.coin_value/1E8, out_addr))
                         expect_outs.add(out_addr)
                     print("\n")
 
@@ -273,9 +308,13 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                             pk = val[1 + (34 * idx):]
                             assert pk[0] == 0x21
                             print("        #%d: %s" % (idx+1, b2a_hex(pk[1:1+33])))
+
+                        exp = ((N*34) + 3)
+                        if len(val) > exp:
+                            print("        (plus JUNK: %d bytes)" % (len(val) - exp))
                         print("\n")
                         
-                        # XXX decode p2sh addresses here too?
+                        # XXX decode implied p2sh addresses here too?
                 except:
                     raise
                     print("(unable to parse multisig redeem script)")
