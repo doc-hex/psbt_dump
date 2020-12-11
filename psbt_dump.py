@@ -214,7 +214,8 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
             if len(val) == 4:
                 nn, = struct.unpack("<I", val)
                 print("'%s' = 0x%x = %d\n" % (b2a_hex(val), nn, nn))
-                continue
+                if key[0] != PSBT_GLOBAL_XPUB:
+                    continue
 
             print('%s  (%d bytes)\n' % (b2a_hex(val), vs))
 
@@ -254,8 +255,12 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                 # value is: master key fingerprint catenated with the derivation path of public key
 
                 fingerprint = val[0:4]
-                path = [struct.unpack_from('<I', val, offset=i)[0] for i in range(4, len(val), 4)]
-                path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
+                if len(val) > 4:
+                    path = [struct.unpack_from('<I', val, offset=i)[0] for i in range(4, len(val), 4)]
+                    path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
+                else:
+                    # valid: no subpath, just xfp.
+                    path = []
                 
                 print("       XPUB: %s" % b2a_hashed_base58(key[1:]))
                 print("    HD Path: (m=%s)/%s\n" % (xfp2hex(fingerprint), '/'.join(path)))
