@@ -211,11 +211,10 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
 
             print('value: ', end='')
 
-            if len(val) == 4:
+            if len(val) == 4 and key[0] != PSBT_GLOBAL_XPUB:
                 nn, = struct.unpack("<I", val)
                 print("'%s' = 0x%x = %d\n" % (b2a_hex(val), nn, nn))
-                if key[0] != PSBT_GLOBAL_XPUB:
-                    continue
+                continue
 
             print('%s  (%d bytes)\n' % (b2a_hex(val), vs))
 
