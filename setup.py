@@ -13,6 +13,7 @@ setup(
     python_requires='>3.5.2',
     install_requires=[
         'Click',
+        'pycoin == 0.80'
     ],
     entry_points='''
         [console_scripts]
