@@ -12,7 +12,6 @@ of the derivation paths in the wrong endian.
 
 ```
 # python3 -m pip install --editable .
-# rehash
 # pbst_dump data/example.psbt
 ```
 
