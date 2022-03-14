@@ -304,7 +304,7 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                                      ('outputs', PSBT_OUT_WITNESS_SCRIPT)]:
 
                 try:
-                    if val[-1] == 0xAE:
+                    if val[-1] == 0xAE and len(val) > 22:
                         M, N = (val[0]-80, val[-2]-80)
                         print("     P2SH Multisig: %d of %d" % (M, N))
                         print("     Pubkeys: ")
@@ -320,8 +320,7 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                         
                         # XXX decode implied p2sh addresses here too?
                 except:
-                    raise
-                    print("(unable to parse multisig redeem script)")
+                    print("(unable to parse POSSIBLE multisig redeem script)")
 
 if __name__ == '__main__':
     dump()
