@@ -81,8 +81,8 @@ def render_address(script, testnet=True):
     if ll == 22 and script[0:2] == b'\x00\x14':
         return bech32_encode(bech32_hrp, 0, script[2:])
 
-    # P2WSH, P2TR and later?
-    if ll == 34 and script[0] in {0, 1} and script[1] == 0x20:
+    # P2WSH, P2TR and later.
+    if ll == 34 and (0 <= script[0] <= 16) and script[1] == 0x20:
         return bech32_encode(bech32_hrp, script[0], script[2:])
 
     return '[script: %s]' % b2a_hex(script)
