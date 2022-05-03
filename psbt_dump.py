@@ -17,7 +17,7 @@ from pycoin.tx.Tx import Tx
 from pycoin.tx.TxOut import TxOut
 from pycoin.encoding import b2a_hashed_base58, hash160
 from pycoin.serialize import b2h_rev
-from pycoin.contrib.segwit_addr import encode as bech32_encode
+from segwit_addr import encode as bech32_encode
 
 # BIP-174 aka PSBT defined values
 PSBT_GLOBAL_UNSIGNED_TX 	= (0)
@@ -55,8 +55,6 @@ def deser_compact_size(f, nit=None):
 def render_address(script, testnet=True):
     # take a scriptPubKey (part of the TxOut) and convert into conventional human-readable
     # string... aka: the "payment address"
-    from pycoin.encoding import b2a_hashed_base58
-    from pycoin.contrib.segwit_addr import encode as bech32_encode
 
     ll = len(script)
 
