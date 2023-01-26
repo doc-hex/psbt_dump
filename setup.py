@@ -25,7 +25,7 @@ if __name__ == '__main__':
         python_requires='>3.6.0',
         install_requires=[
             'Click',
-            'pycoin == 0.80'
+            'pycoin==0.92.20220529'
         ],
         entry_points='''
             [console_scripts]

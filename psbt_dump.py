@@ -7,17 +7,18 @@
 # That will create the command "psbt_dump" in your path... or just use "./psbt_dump foo.psbt" here
 #
 #
-import click, sys, os, pdb, struct, io
-from pprint import pformat
+import click, sys, pdb, struct, io
 from binascii import b2a_hex as _b2a_hex
 from binascii import a2b_hex as _a2b_hex
-from collections import namedtuple
 from base64 import b64encode, b64decode
-from pycoin.tx.Tx import Tx
-from pycoin.tx.TxOut import TxOut
-from pycoin.encoding import b2a_hashed_base58, hash160
-from pycoin.serialize import b2h_rev
+from pycoin.symbols.btc import network
+from pycoin.symbols.xtn import network as testnetwork
+from pycoin.encoding.hash import hash160
+from pycoin.encoding.b58 import b2a_hashed_base58
+from pycoin.encoding.hexbytes import b2h_rev
 from segwit_addr import encode as bech32_encode
+
+Tx = network.Tx
 
 # BIP-174 aka PSBT defined values
 PSBT_GLOBAL_UNSIGNED_TX 	= (0)
@@ -217,7 +218,7 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
             print('%s  (%d bytes)\n' % (b2a_hex(val), vs))
 
             # prefix byte for addresses in current network
-            ADP = b'\x6f' if testnet else b'\0'
+            ADP = testnetwork.address if testnet else network.address
 
             if (section, key[0]) in [ ('globals', PSBT_GLOBAL_UNSIGNED_TX),
                                       ('inputs', PSBT_IN_NON_WITNESS_UTXO)]:
