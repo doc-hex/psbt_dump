@@ -37,6 +37,16 @@ PSBT_OUT_REDEEM_SCRIPT 	    = (0)
 PSBT_OUT_WITNESS_SCRIPT 	= (1)
 PSBT_OUT_BIP32_DERIVATION 	= (2)
 
+
+SIGHASH_MAP = {
+    1: "ALL",
+    2: "NONE",
+    3: "SINGLE",
+    1 | 0x80: "ALL|ANYONECANPAY",
+    2 | 0x80: "NONE|ANYONECANPAY",
+    3 | 0x80: "SINGLE|ANYONECANPAY",
+}
+
 b2a_hex = lambda a: str(_b2a_hex(a), 'ascii')
 
 # no endian swap needed here, because we read as byte string from file
@@ -211,7 +221,10 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
 
             if len(val) == 4 and key[0] != PSBT_GLOBAL_XPUB:
                 nn, = struct.unpack("<I", val)
-                print("'%s' = 0x%x = %d\n" % (b2a_hex(val), nn, nn))
+                if key[0] == PSBT_IN_SIGHASH_TYPE:
+                    print("'%s' = 0x%x = %d = %s\n" % (b2a_hex(val), nn, nn, SIGHASH_MAP[nn]))
+                else:
+                    print("'%s' = 0x%x = %d\n" % (b2a_hex(val), nn, nn))
                 continue
 
             print('%s  (%d bytes)\n' % (b2a_hex(val), vs))
