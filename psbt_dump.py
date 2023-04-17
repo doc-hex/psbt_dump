@@ -7,7 +7,8 @@
 # That will create the command "psbt_dump" in your path... or just use "./psbt_dump foo.psbt" here
 #
 #
-import click, sys, pdb, struct, io
+import click, sys, pdb, struct, io, copy
+from io import BytesIO
 from binascii import b2a_hex as _b2a_hex
 from binascii import a2b_hex as _a2b_hex
 from base64 import b64encode, b64decode
@@ -21,25 +22,50 @@ from segwit_addr import encode as bech32_encode
 Tx = network.Tx
 
 # BIP-174 aka PSBT defined values
-PSBT_GLOBAL_UNSIGNED_TX 	= (0)
-PSBT_GLOBAL_XPUB        	= (1)
+PSBT_GLOBAL_UNSIGNED_TX 	  = 0
+PSBT_GLOBAL_XPUB        	  = 1
 
-PSBT_IN_NON_WITNESS_UTXO 	= (0)
-PSBT_IN_WITNESS_UTXO 	    = (1)
-PSBT_IN_PARTIAL_SIG 	    = (2)
-PSBT_IN_SIGHASH_TYPE 	    = (3)
-PSBT_IN_REDEEM_SCRIPT 	    = (4)
-PSBT_IN_WITNESS_SCRIPT 	    = (5)
-PSBT_IN_BIP32_DERIVATION 	= (6)
-PSBT_IN_FINAL_SCRIPTSIG 	= (7)
-PSBT_IN_FINAL_SCRIPTWITNESS = (8)
+PSBT_IN_NON_WITNESS_UTXO 	  = 0
+PSBT_IN_WITNESS_UTXO 	      = 1
+PSBT_IN_PARTIAL_SIG 	      = 2
+PSBT_IN_SIGHASH_TYPE 	      = 3
+PSBT_IN_REDEEM_SCRIPT 	      = 4
+PSBT_IN_WITNESS_SCRIPT 	      = 5
+PSBT_IN_BIP32_DERIVATION 	  = 6
+PSBT_IN_FINAL_SCRIPTSIG 	  = 7
+PSBT_IN_FINAL_SCRIPTWITNESS   = 8
+# BIP-371
+PSBT_IN_TAP_KEY_SIG           = 19  # 0x13
+PSBT_IN_TAP_SCRIPT_SIG        = 20  # 0x14
+PSBT_IN_TAP_LEAF_SCRIPT       = 21  # 0x15
+PSBT_IN_TAP_BIP32_DERIVATION  = 22  # 0x16
+PSBT_IN_TAP_INTERNAL_KEY      = 23  # 0x17
+PSBT_IN_TAP_MERKLE_ROOT       = 24  # 0x18
 
-PSBT_OUT_REDEEM_SCRIPT 	    = (0)
-PSBT_OUT_WITNESS_SCRIPT 	= (1)
-PSBT_OUT_BIP32_DERIVATION 	= (2)
+PSBT_OUT_REDEEM_SCRIPT 	      = 0
+PSBT_OUT_WITNESS_SCRIPT 	  = 1
+PSBT_OUT_BIP32_DERIVATION 	  = 2
+# BIP-371
+PSBT_OUT_TAP_INTERNAL_KEY     = 5
+PSBT_OUT_TAP_TREE             = 6
+PSBT_OUT_TAP_BIP32_DERIVATION = 7
+
+
+global_purpose = {}
+output_purpose = {}
+input_purpose  = {}
+# need to copy here otherwise - length changed during iteration
+for k, v in copy.copy(globals()).items():
+    if "PSBT_OUT_" in k:
+        output_purpose[v] = k
+    if "PSBT_IN_" in k:
+        input_purpose[v] = k
+    if "PSBT_GLOBAL_" in k:
+        global_purpose[v] = k
 
 
 SIGHASH_MAP = {
+    0: "DEFAULT",  # Taproot specific
     1: "ALL",
     2: "NONE",
     3: "SINGLE",
@@ -86,13 +112,13 @@ def render_address(script, testnet=True):
     if ll == 23 and script[0:2] == b'\xA9\x14' and script[22] == 0x87:
         return b2a_hashed_base58(b58_script + script[2:2+20])
 
-    # P2WPKH
-    if ll == 22 and script[0:2] == b'\x00\x14':
-        return bech32_encode(bech32_hrp, 0, script[2:])
-
-    # P2WSH, P2TR and later.
-    if ll == 34 and (0 <= script[0] <= 16) and script[1] == 0x20:
+    # segwit v0 (P2WPKH, P2WSH)
+    if script[0] == 0 and script[1] in (0x14, 0x20) and ll in (22, 34):
         return bech32_encode(bech32_hrp, script[0], script[2:])
+
+    # segwit v1 (P2TR) and later segwit version
+    if ll == 34 and 0x51 <= script[0] <= 0x60 and script[1] == 0x20:
+        return bech32_encode(bech32_hrp, script[0] - 80, script[2:])
 
     return '[script: %s]' % b2a_hex(script)
 
@@ -192,22 +218,11 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
 
             try:
                 if section == 'globals':
-                    purpose = [ 'GLOBAL_UNSIGNED_TX',
-                                'GLOBAL_XPUB'][key[0]]
+                    purpose = global_purpose[key[0]]
                 elif section == 'inputs':
-                    purpose = [ 'IN_NON_WITNESS_UTXO',
-                                'IN_WITNESS_UTXO',
-                                'IN_PARTIAL_SIG',
-                                'IN_SIGHASH_TYPE',
-                                'IN_REDEEM_SCRIPT',
-                                'IN_WITNESS_SCRIPT',
-                                'IN_BIP32_DERIVATION',
-                                'IN_FINAL_SCRIPTSIG',
-                                'IN_FINAL_SCRIPTWITNESS'][key[0]]
+                    purpose = input_purpose[key[0]]
                 elif section == 'outputs':
-                    purpose = [ 'OUT_REDEEM_SCRIPT',
-                                'OUT_WITNESS_SCRIPT',
-                                'OUT_BIP32_DERIVATION'][key[0]]
+                    purpose = output_purpose[key[0]]
 
             except IndexError:
                 purpose = 'Unknown type=0x%0x' % key[0]
@@ -276,6 +291,73 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                 print("       XPUB: %s" % b2a_hashed_base58(key[1:]))
                 print("    HD Path: (m=%s)/%s\n" % (xfp2hex(fingerprint), '/'.join(path)))
 
+            if (section, key[0]) == ("outputs", PSBT_OUT_TAP_TREE):
+                reader = BytesIO(val)
+                print("    Output Taproot Tree:")
+                while True:
+                    depth = reader.read(1)
+                    if not depth:
+                        break
+                    leaf_version = reader.read(1)
+                    script_len = deser_compact_size(reader)
+                    script = reader.read(script_len)
+                    print("        Depth: %d" % int(depth[0]))
+                    print("        Leaf Version: 0x%s" % b2a_hex(leaf_version))
+                    print("        Script: %s" % b2a_hex(script))
+
+            if (section, key[0]) == ("inputs", PSBT_IN_TAP_SCRIPT_SIG):
+                print("    Taproot script signature:")
+                assert len(key[1:]) == 64
+                xonly, script_hash = key[1:33], key[33:]
+                print("    Xonly pubkey: %s" % b2a_hex(xonly))
+                print("    Leaf Hash: %s" % b2a_hex(script_hash))
+                assert len(val) in (64, 65)
+                if len(val) == 64:
+                    print("    Schnorr Signature: %s (sighash=DEFAULT)" % b2a_hex(val))
+                else:
+                    print("    Schnorr Signature: %s (sighash=%s)" % (b2a_hex(val[:-1]), SIGHASH_MAP[val[-1]]))
+
+            if (section, key[0]) == ("inputs", PSBT_IN_TAP_LEAF_SCRIPT):
+                version = key[1]
+                control_blocks = key[2:]
+                assert (len(control_blocks)) % 32 == 0, "PSBT_IN_TAP_LEAF_SCRIPT control block is not valid"
+                script, leaf_version = val[:-1], int(val[-1])
+                print("    Leaf Version: %s" % hex(leaf_version))
+                print("    Script: %s" % b2a_hex(script))
+                cbs = [control_blocks[i:i + 32] for i in range(0, len(control_blocks), 32)]
+                print("    Control blocks:")
+                print("    Version: %s" % hex(version))
+                for cb in cbs:
+                    print("        %s" % b2a_hex(cb))
+
+            if (section, key[0]) in [('inputs', PSBT_IN_TAP_BIP32_DERIVATION),
+                                     ('outputs', PSBT_OUT_TAP_BIP32_DERIVATION)]:
+                # taproot HD key paths
+                try:
+                    xonly_pubkey = key[1:]
+                    reader = BytesIO(val)
+                    leaf_hash_len = deser_compact_size(reader)
+                    leaf_hashes = []
+                    for _ in range(leaf_hash_len):
+                        leaf_hashes.append(reader.read(32))
+                    xfp_path = reader.read()
+                    fingerprint = xfp_path[0:4]
+                    path = [struct.unpack_from('<I', xfp_path,offset=i)[0]
+                                for i in range(4, len(xfp_path), 4)]
+                    path = [str(i & 0x7fffffff) + ("'" if i & 0x80000000 else "") for i in path]
+
+                    is_internal = True if not leaf_hash_len else False
+                    print("    Xonly Pubkey%s: %s (%d bytes)" % ("(internal)" if is_internal else "",
+                                                                 b2a_hex(xonly_pubkey), len(xonly_pubkey)))
+                    if leaf_hashes:
+                        print("    Leaf Hashes:")
+                        for lh in leaf_hashes:
+                            print("        %s" % b2a_hex(lh))
+                    print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
+                    print("\n")
+                except:
+                    print("(unable to parse taproot hdpath)")
+
             if (section, key[0]) in [('inputs', PSBT_IN_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_BIP32_DERIVATION)]:
                 # HD key paths
@@ -302,7 +384,7 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                         if match:
                             addrs = list(match)
 
-                    print("     Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
+                    print("    Pubkey: %s (%d bytes)" % (b2a_hex(pubkey), len(pubkey)))
                     print("    HD Path: (m=%s)/%s" % (xfp2hex(fingerprint), '/'.join(path)))
                     for addr in addrs:
                         print("             = %s" % addr)
