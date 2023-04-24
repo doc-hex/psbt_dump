@@ -298,11 +298,11 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                     depth = reader.read(1)
                     if not depth:
                         break
-                    leaf_version = reader.read(1)
+                    leaf_version = reader.read(1)[0] & 0xfe
                     script_len = deser_compact_size(reader)
                     script = reader.read(script_len)
                     print("        Depth: %d" % int(depth[0]))
-                    print("        Leaf Version: 0x%s" % b2a_hex(leaf_version))
+                    print("        Leaf Version: %s" % hex(leaf_version))
                     print("        Script: %s" % b2a_hex(script))
 
             if (section, key[0]) == ("inputs", PSBT_IN_TAP_SCRIPT_SIG):
@@ -319,16 +319,17 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
 
             if (section, key[0]) == ("inputs", PSBT_IN_TAP_LEAF_SCRIPT):
                 version = key[1]
-                control_blocks = key[2:]
-                assert (len(control_blocks)) % 32 == 0, "PSBT_IN_TAP_LEAF_SCRIPT control block is not valid"
-                script, leaf_version = val[:-1], int(val[-1])
+                control_block = key[2:]
+                assert (len(control_block)) % 32 == 0, "PSBT_IN_TAP_LEAF_SCRIPT control block is not valid"
+                script, leaf_version = val[:-1], int(val[-1]) & 0xfe
                 print("    Leaf Version: %s" % hex(leaf_version))
                 print("    Script: %s" % b2a_hex(script))
-                cbs = [control_blocks[i:i + 32] for i in range(0, len(control_blocks), 32)]
-                print("    Control blocks:")
-                print("    Version: %s" % hex(version))
-                for cb in cbs:
-                    print("        %s" % b2a_hex(cb))
+                cbs = [control_block[i:i + 32] for i in range(0, len(control_block), 32)]
+                print("    Control block:")
+                print("        Leaf Version: %s (parity bit: %d)" % (hex(version & 0xfe), version & 0x01))
+                print("        Internal Key: %s" % b2a_hex(cbs[0]))
+                for cb in cbs[1:]:
+                    print("            %s" % b2a_hex(cb))
 
             if (section, key[0]) in [('inputs', PSBT_IN_TAP_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_TAP_BIP32_DERIVATION)]:
