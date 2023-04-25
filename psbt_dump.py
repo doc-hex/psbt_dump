@@ -329,7 +329,7 @@ def dump(psbt, hex_output, bin_output, testnet, base64, show_addrs):
                 print("        Leaf Version: %s (parity bit: %d)" % (hex(version & 0xfe), version & 0x01))
                 print("        Internal Key: %s" % b2a_hex(cbs[0]))
                 for cb in cbs[1:]:
-                    print("            %s" % b2a_hex(cb))
+                    print("        %s" % b2a_hex(cb))
 
             if (section, key[0]) in [('inputs', PSBT_IN_TAP_BIP32_DERIVATION),
                                      ('outputs', PSBT_OUT_TAP_BIP32_DERIVATION)]:
